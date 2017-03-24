@@ -1,31 +1,31 @@
 package kingsheep.team.mchete;
 
-import kingsheep.*;
+import kingsheep.Simulator;
+import kingsheep.Type;
 
 public class Sheep extends UzhShortNameCreature {
+	private boolean noMoreFoodAvailable = false;
 
-    public Sheep(Type type, Simulator parent, int playerID, int x, int y) {
-        super(type, parent, playerID, x, y);
-    }
+	public Sheep(Type type, Simulator parent, int playerID, int x, int y) {
+		super(type, parent, playerID, x, y);
+	}
 
+	protected void think(Type map[][]) {
 
-    protected void think(Type map[][]) {
-		/*
-		TODO
-		YOUR SHEEP CODE HERE
-		
-		BASE YOUR LOGIC ON THE INFORMATION FROM THE ARGUMENT map[][]
-		
-		YOUR CODE NEED TO BE DETERMINISTIC. 
-		THAT MEANS, GIVEN A DETERMINISTIC OPPONENT AND MAP THE ACTIONS OF YOUR SHEEP HAVE TO BE REPRODUCIBLE
-		
-		SET THE MOVE VARIABLE TO ONE TOF THE 5 VALUES
-        move = Move.UP;
-        move = Move.DOWN;
-        move = Move.LEFT;
-        move = Move.RIGHT;
-        move = Move.WAIT;
-		*/
-        move = Move.WAIT;
-    }
+		if (alive && !noMoreFoodAvailable) {
+			char[] objectives = new char[2];
+			objectives[0] = 'r';
+			objectives[1] = 'g';
+
+			move = getAction(map, objectives);
+			if (move == null) {
+				move = Move.WAIT;
+			}
+			//
+			// if (move == Move.WAIT) {
+			// noMoreFoodAvailable = true;
+			// // fleeFromBadWolf(map);
+			// }
+		}
+	}
 }
