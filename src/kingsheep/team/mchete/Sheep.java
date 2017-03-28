@@ -12,20 +12,21 @@ public class Sheep extends UzhShortNameCreature {
 
 	protected void think(Type map[][]) {
 
-		if (alive && !noMoreFoodAvailable) {
-			char[] objectives = new char[2];
-			objectives[0] = 'r';
-			objectives[1] = 'g';
+		// if (alive && !noMoreFoodAvailable) {
+		// char[] objectives = new char[2];
+		// objectives[0] = 'r';
+		// objectives[1] = 'g';
 
-			move = getAction(map, objectives);
-			if (move == null) {
-				move = Move.WAIT;
-			}
-			//
-			// if (move == Move.WAIT) {
-			// noMoreFoodAvailable = true;
-			// // fleeFromBadWolf(map);
-			// }
-		}
+		 getAction(map);
+		// if (move == null) {
+		// move = Move.WAIT;
+		// }
+		//
+		// if (move == Move.WAIT) {
+		// noMoreFoodAvailable = true;
+		// // fleeFromBadWolf(map);
+		// }
+
+		move = Move.WAIT;
 	}
 }
