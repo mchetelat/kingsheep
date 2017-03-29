@@ -5,7 +5,8 @@ public abstract class Creature {
     protected enum Move { WAIT, UP, DOWN, LEFT, RIGHT }
 
     public final Type type;
-    private Simulator parent;
+    @SuppressWarnings("unused")
+	private Simulator parent;
     public final int playerID;
     public Move move;
     public int x;

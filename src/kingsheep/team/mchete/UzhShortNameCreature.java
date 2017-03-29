@@ -2,10 +2,14 @@ package kingsheep.team.mchete;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import kingsheep.Creature;
 import kingsheep.Simulator;
@@ -17,6 +21,7 @@ import kingsheep.Type;
 public abstract class UzhShortNameCreature extends Creature {
 	private Type map[][];
 	private List<Square> objectives;
+	private Square testGoal;
 
 	public UzhShortNameCreature(Type type, Simulator parent, int playerID, int x, int y) {
 		super(type, parent, playerID, x, y);
@@ -41,19 +46,20 @@ public abstract class UzhShortNameCreature extends Creature {
 				}
 			}
 		}
+
 		Square root = new Square(map[y][x], x, y);
-		Square testGoal = new Square(map[y][x], 4, 2);
-		Move move = root.aStarSearch(testGoal);
+		testGoal = new Square(map[y][x], 12, 10);
+		Move move = root.aStarSearch();
 	}
 
 	class Square {
 		Type type;
 		private int x, y;
-		List<Square> openSet = new ArrayList<Square>();
-		List<Square> closedSet = new ArrayList<Square>();
+		Set<Square> openSet = new HashSet<>();
+		Set<Square> closedSet = new HashSet<>();
 		Map<Square, Square> cameFrom = new HashMap<>();
-		HashMap<Square, Integer> gScore = new HashMap<Square, Integer>();
-		TreeMap<Integer, Square> fScore = new TreeMap<Integer, Square>();
+		Map<Square, Integer> gScore = new HashMap<>();
+		Map<Square, Integer> fScore = new LinkedHashMap<>();
 
 		protected Square(Type type, int x, int y) {
 			this.type = type;
@@ -62,14 +68,27 @@ public abstract class UzhShortNameCreature extends Creature {
 			this.gScore.put(this, 100000);
 		}
 
-		protected Move aStarSearch(Square goal) {
+		protected Move aStarSearch() {
 			openSet.add(this);
 			gScore.put(this, 0);
-			fScore.put(getHeuristicCostEstimate(goal), this);
+			fScore.put(this, getHeuristicCostEstimate(this, testGoal));
 
 			while (!openSet.isEmpty()) {
-				Square current = fScore.firstEntry().getValue();
-				System.out.println(current.x + " || " + current.y + " -> fScore: " + fScore.firstEntry().getKey());
+
+				List<Square> bla = fScore.entrySet().stream().sorted(Map.Entry.<Square, Integer>comparingByValue())
+						.map(Map.Entry::getKey).collect(Collectors.toList());
+
+				Square current = null;
+
+				for (Square entry : bla) {
+					System.out.print(entry);
+					if (setContainsSquare(openSet, entry)) {
+						System.out.println(" -> taken!");
+						current = entry;
+						break;
+					}
+					System.out.println("");
+				}
 
 				if (current != null && current.isSquareContainingObjective()) {
 					System.out.println("GOAL!!!");
@@ -80,33 +99,45 @@ public abstract class UzhShortNameCreature extends Creature {
 				closedSet.add(current);
 
 				for (Square neighbour : getAccessibleNeighbourSquares(current, x, y)) {
-					if (closedSet.contains(neighbour)) {
+					if (setContainsSquare(closedSet, neighbour)) {
 						break;
 					}
 
-					int tentative_gScore = gScore.get(current) + 1;
+					int tentative_gScore = gScore.get(current) + getHeuristicCostEstimate(current, neighbour);
 
-					if (!openSet.contains(neighbour)) {
+					if (!setContainsSquare(openSet, neighbour)) {
 						openSet.add(neighbour);
 					} else if (tentative_gScore >= gScore.get(neighbour)) {
 						break;
 					}
 					// cameFrom[neighbor] := current
 					gScore.put(neighbour, tentative_gScore);
-					fScore.put(gScore.get(neighbour) + getHeuristicCostEstimate(neighbour, goal), neighbour);
+					fScore.put(neighbour, gScore.get(neighbour) + getHeuristicCostEstimate(neighbour, testGoal));
 				}
 
-				for (Square square : openSet) {
-					System.out.println("openSet: ");
-					System.out.println(square.x + " || " + square.y);
-				}
+				// System.out.println("");
+				// System.out.println("----------------------------------");
+				// System.out.println("fScore after checking neighbours: ");
+				// for (Entry<Square, Integer> entry : fScore.entrySet()) {
+				// System.out.println(entry.getKey() + " -> fScore: " +
+				// entry.getValue());
+				// }
+				// System.out.println("----------------------------------");
+				// System.out.println("");
 
-				for (Square entry : fScore.values()) {
-					System.out.println("fScore: ");
-					System.out.println(entry.x + " || " + entry.y);
+			}
+
+			return null;
+		}
+
+		private boolean setContainsSquare(Set<Square> set, Square square) {
+			boolean ret = false;
+			for (Square entry : set) {
+				if (entry.x == square.x && entry.y == square.y) {
+					ret = true;
 				}
 			}
-			return null;
+			return ret;
 		}
 
 		private int getHeuristicCostEstimate(Square goal) {
@@ -126,7 +157,7 @@ public abstract class UzhShortNameCreature extends Creature {
 			addNeighbourToListIfAccessible(accessibleNeighbourSquares,
 					new Square(map[yPos][xPos + 1], origin.getXCoordinate() + 1, origin.getYCoordinate()));
 			addNeighbourToListIfAccessible(accessibleNeighbourSquares,
-					new Square(map[yPos][xPos - 1], origin.getXCoordinate() - 1, origin.getYCoordinate() + 1));
+					new Square(map[yPos][xPos - 1], origin.getXCoordinate() - 1, origin.getYCoordinate()));
 
 			return accessibleNeighbourSquares;
 		}
@@ -138,8 +169,9 @@ public abstract class UzhShortNameCreature extends Creature {
 		}
 
 		private boolean isSquareContainingObjective() {
-			if (x == 4 && y == 2)
-				;
+			if (testGoal.x == this.x && testGoal.y == this.y) {
+				return true;
+			}
 			return false;
 		}
 
@@ -157,6 +189,10 @@ public abstract class UzhShortNameCreature extends Creature {
 
 		protected int getYCoordinate() {
 			return y;
+		}
+
+		public String toString() {
+			return getXCoordinate() + " || " + getYCoordinate();
 		}
 	}
 }

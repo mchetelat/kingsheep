@@ -8,7 +8,9 @@ import javax.swing.ImageIcon;
 
 public class Gfx extends JFrame {
 
-    /** Size of a unit square on the map. */
+	private static final long serialVersionUID = 1L;
+
+	/** Size of a unit square on the map. */
     public static final int UNIT   = 48;
 
     /** Number of horizontal/vertical squares. */
