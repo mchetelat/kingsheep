@@ -3,11 +3,9 @@ package kingsheep.team.mchete;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -74,12 +72,13 @@ public abstract class UzhShortNameCreature extends Creature {
 
 			while (!openSet.isEmpty()) {
 
-				List<Square> bla = fScore.entrySet().stream().sorted(Map.Entry.<Square, Integer>comparingByValue())
-						.map(Map.Entry::getKey).collect(Collectors.toList());
+				List<Square> sortedSquaresfScore = fScore.entrySet().stream()
+						.sorted(Map.Entry.<Square, Integer>comparingByValue()).map(Map.Entry::getKey)
+						.collect(Collectors.toList());
 
 				Square current = null;
 
-				for (Square entry : bla) {
+				for (Square entry : sortedSquaresfScore) {
 					System.out.print(entry + " fScore: " + fScore.get(entry));
 					if (setContainsSquare(openSet, entry)) {
 						System.out.println(" -> taken!");
@@ -117,16 +116,6 @@ public abstract class UzhShortNameCreature extends Creature {
 				}
 
 				System.out.println("");
-
-				// System.out.println("----------------------------------");
-				// System.out.println("fScore after checking neighbours: ");
-				// for (Entry<Square, Integer> entry : fScore.entrySet()) {
-				// System.out.println(entry.getKey() + " -> fScore: " +
-				// entry.getValue());
-				// }
-				// System.out.println("----------------------------------");
-				// System.out.println("");
-
 			}
 
 			return null;
