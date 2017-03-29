@@ -48,7 +48,7 @@ public abstract class UzhShortNameCreature extends Creature {
 		}
 
 		Square root = new Square(map[y][x], x, y);
-		testGoal = new Square(map[y][x], 12, 10);
+		testGoal = new Square(map[y][x], 9, 7);
 		Move move = root.aStarSearch();
 	}
 
@@ -65,7 +65,6 @@ public abstract class UzhShortNameCreature extends Creature {
 			this.type = type;
 			this.x = x;
 			this.y = y;
-			this.gScore.put(this, 100000);
 		}
 
 		protected Move aStarSearch() {
@@ -81,7 +80,7 @@ public abstract class UzhShortNameCreature extends Creature {
 				Square current = null;
 
 				for (Square entry : bla) {
-					System.out.print(entry);
+					System.out.print(entry + " fScore: " + fScore.get(entry));
 					if (setContainsSquare(openSet, entry)) {
 						System.out.println(" -> taken!");
 						current = entry;
@@ -98,24 +97,27 @@ public abstract class UzhShortNameCreature extends Creature {
 				openSet.remove(current);
 				closedSet.add(current);
 
-				for (Square neighbour : getAccessibleNeighbourSquares(current, x, y)) {
-					if (setContainsSquare(closedSet, neighbour)) {
-						break;
-					}
+				for (Square neighbour : getAccessibleNeighbourSquares(current, current.x, current.y)) {
 
-					int tentative_gScore = gScore.get(current) + getHeuristicCostEstimate(current, neighbour);
+					if (!setContainsSquare(closedSet, neighbour)) {
 
-					if (!setContainsSquare(openSet, neighbour)) {
-						openSet.add(neighbour);
-					} else if (tentative_gScore >= gScore.get(neighbour)) {
-						break;
+						int tentative_gScore = gScore.get(current) + getHeuristicCostEstimate(current, neighbour);
+
+						if (!setContainsSquare(openSet, neighbour)) {
+							openSet.add(neighbour);
+						}
+
+						if (gScore.get(neighbour) == null || tentative_gScore < gScore.get(neighbour)) {
+							// cameFrom[neighbor] := current
+							gScore.put(neighbour, tentative_gScore);
+							fScore.put(neighbour,
+									gScore.get(neighbour) + getHeuristicCostEstimate(neighbour, testGoal));
+						}
 					}
-					// cameFrom[neighbor] := current
-					gScore.put(neighbour, tentative_gScore);
-					fScore.put(neighbour, gScore.get(neighbour) + getHeuristicCostEstimate(neighbour, testGoal));
 				}
 
-				// System.out.println("");
+				System.out.println("");
+
 				// System.out.println("----------------------------------");
 				// System.out.println("fScore after checking neighbours: ");
 				// for (Entry<Square, Integer> entry : fScore.entrySet()) {
@@ -140,25 +142,24 @@ public abstract class UzhShortNameCreature extends Creature {
 			return ret;
 		}
 
-		private int getHeuristicCostEstimate(Square goal) {
-			return getHeuristicCostEstimate(this, goal);
-		}
-
 		private int getHeuristicCostEstimate(Square start, Square goal) {
 			return Math.abs(goal.x - start.x) + Math.abs(goal.y - start.y);
 		}
 
 		private List<Square> getAccessibleNeighbourSquares(Square origin, int xPos, int yPos) {
 			List<Square> accessibleNeighbourSquares = new ArrayList<Square>();
-			addNeighbourToListIfAccessible(accessibleNeighbourSquares,
-					new Square(map[yPos - 1][xPos], origin.getXCoordinate(), origin.getYCoordinate() - 1));
-			addNeighbourToListIfAccessible(accessibleNeighbourSquares,
-					new Square(map[yPos + 1][xPos], origin.getXCoordinate(), origin.getYCoordinate() + 1));
-			addNeighbourToListIfAccessible(accessibleNeighbourSquares,
-					new Square(map[yPos][xPos + 1], origin.getXCoordinate() + 1, origin.getYCoordinate()));
-			addNeighbourToListIfAccessible(accessibleNeighbourSquares,
-					new Square(map[yPos][xPos - 1], origin.getXCoordinate() - 1, origin.getYCoordinate()));
-
+			try {
+				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
+						new Square(map[yPos - 1][xPos], origin.getXCoordinate(), origin.getYCoordinate() - 1));
+				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
+						new Square(map[yPos + 1][xPos], origin.getXCoordinate(), origin.getYCoordinate() + 1));
+				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
+						new Square(map[yPos][xPos + 1], origin.getXCoordinate() + 1, origin.getYCoordinate()));
+				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
+						new Square(map[yPos][xPos - 1], origin.getXCoordinate() - 1, origin.getYCoordinate()));
+			} catch (ArrayIndexOutOfBoundsException e) {
+				// do not add since it is outside of the map
+			}
 			return accessibleNeighbourSquares;
 		}
 
@@ -176,11 +177,11 @@ public abstract class UzhShortNameCreature extends Creature {
 		}
 
 		private boolean isSquareVisitable() {
-			if (type == Type.FENCE) {
-				return false;
+			if (type != Type.FENCE) {
+				return true;
 			}
 
-			return true;
+			return false;
 		}
 
 		protected int getXCoordinate() {
