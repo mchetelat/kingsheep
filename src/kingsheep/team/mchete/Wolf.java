@@ -25,6 +25,6 @@ public class Wolf extends UzhShortNameCreature {
         move = Move.RIGHT;
         move = Move.WAIT;
 		*/
-        move = Move.LEFT;
+        move = Move.WAIT;
     }
 }
