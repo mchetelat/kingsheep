@@ -157,18 +157,19 @@ public abstract class UzhShortNameCreature extends Creature {
 				Square current = null;
 
 				for (Square entry : sortedSquaresfScore) {
-					System.out.print(entry + " fScore: " + fScore.get(entry));
+					// System.out.print(entry + " fScore: " +
+					// fScore.get(entry));
 					if (isSetContainsSquare(openSet, entry)) {
-						System.out.println(" -> taken!");
-						System.out.println("");
+						// System.out.println(" -> taken!");
+						// System.out.println("");
 						current = entry;
 						break;
 					}
-					System.out.println("");
+					// System.out.println("");
 				}
 
 				if (current != null && current.isGoalReached()) {
-					System.out.println("OBJECTIVE_REACHED");
+					// System.out.println("OBJECTIVE_REACHED");
 					current.reconstructPath();
 					break;
 				}
