@@ -31,27 +31,8 @@ public abstract class UzhShortNameCreature extends Creature {
 		super(type, parent, playerID, x, y);
 	}
 
-	public String getNickname() {
-		return "BigKingSheepXXL";
-	}
-
-	// i = y, j = x
-	protected Move getAction(Type map[][]) {
-		this.map = map;
-		objectives = new LinkedHashMap<>();
-		path = new LinkedHashSet<>();
-		root = new Square(map[y][x], x, y);
-
-		for (int i = 0; i < this.map.length - 1; i++) {
-			for (int j = 0; j < this.map[0].length - 1; j++) {
-				if (this.map[i][j].equals(Type.GRASS)) {
-					objectives.put(new Square(Type.GRASS, j, i), 1000);
-				}
-				if (this.map[i][j].equals(Type.RHUBARB)) {
-					objectives.put(new Square(Type.RHUBARB, j, i), 1000);
-				}
-			}
-		}
+	private Square evaluateNextGoal() {
+		Square ret = null;
 
 		for (Entry<Square, Integer> objective : objectives.entrySet()) {
 			path.clear();
@@ -64,13 +45,31 @@ public abstract class UzhShortNameCreature extends Creature {
 				.sorted(Map.Entry.<Square, Integer>comparingByValue()).map(Map.Entry::getKey)
 				.collect(Collectors.toList());
 
-		path.clear();
-
 		if (sortedObjectives.size() > 0) {
-			goal = sortedObjectives.get(0);
+			ret = sortedObjectives.get(0);
 		}
 
-		root.aStarSearch();
+		return ret;
+	}
+
+	public String getNickname() {
+		return "BigKingSheepXXL";
+	}
+
+	// i = y, j = x
+	protected Move getAction(Type map[][]) {
+		this.map = map;
+		objectives = new LinkedHashMap<>();
+		path = new LinkedHashSet<>();
+		root = new Square(map[y][x], x, y);
+
+		scanMapForObjectives();
+		goal = evaluateNextGoal();
+		path.clear();
+
+		if (goal != null) {
+			root.aStarSearch();
+		}
 
 		return getNextMove();
 	}
@@ -84,6 +83,19 @@ public abstract class UzhShortNameCreature extends Creature {
 			}
 		}
 		return ret;
+	}
+
+	private void scanMapForObjectives() {
+		for (int i = 0; i < this.map.length - 1; i++) {
+			for (int j = 0; j < this.map[0].length - 1; j++) {
+				if (this.map[i][j].equals(Type.GRASS)) {
+					objectives.put(new Square(Type.GRASS, j, i), 1000);
+				}
+				if (this.map[i][j].equals(Type.RHUBARB)) {
+					objectives.put(new Square(Type.RHUBARB, j, i), 1000);
+				}
+			}
+		}
 	}
 
 	class Square {
