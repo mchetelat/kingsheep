@@ -13,8 +13,8 @@ public class Simulator {
     /** Font size used for the top-window text. */
     private static final int FONTSIZE = 14;
 
-    /** Maximum number of seconds a player is allowed to think. */
-    private static final int THINKLIMIT = 10000000;
+    /** Maximum number of nanoseconds a player is allowed to think. */
+    private static final int THINKLIMIT = 1000;
 
     /** Minimum time to wait between player turns (even if a player used
         less time to think). */
@@ -350,11 +350,26 @@ public class Simulator {
         else if (map[c.y][c.x] == Type.WOLF1 && c.type == Type.SHEEP2)
             p[1].sheep.alive = false;
 
-        if (!p[0].sheep.alive && playerWon == 0 && p[0].score < p[1].score)
-            playerWon = 2;
-        else if (!p[1].sheep.alive && playerWon == 0
-                 && p[1].score < p[0].score)
-            playerWon = 1;
+        if (!p[0].sheep.alive && playerWon == 0) {
+//            if (p[0].score < p[1].score) {
+                p[1].score += p[0].score;
+                p[0].score = 0;
+                playerWon = 2;
+//            }
+//            else {
+//                playerWon = 1;
+//            }
+        }
+        else if (!p[1].sheep.alive && playerWon == 0) {
+//            if (p[1].score < p[0].score) {
+                p[0].score += p[1].score;
+                p[1].score = 1;
+                playerWon = 1;
+//            }
+//            else {
+//                playerWon = 2;
+//            }
+        }
 
         map[c.y][c.x] = c.type;
     }

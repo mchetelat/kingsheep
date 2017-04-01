@@ -6,8 +6,7 @@ import kingsheep.Type;
 public class Sheep extends GreedyCreature {
     private boolean noMoreFoodAvailable = false;
     private Move lastMove;
-    @SuppressWarnings("unused")
-	private int counter = 0;
+    private int counter = 0;
 
     public Sheep(Type type, Simulator parent, int playerID, int x, int y) {
         super(type, parent, playerID, x, y);
@@ -44,8 +43,7 @@ public class Sheep extends GreedyCreature {
 
     private boolean isCoordinateValid(Type map[][], int y, int x){
         try{
-            @SuppressWarnings("unused")
-			Type type = map[y][x];
+            Type type = map[y][x];
         }catch (ArrayIndexOutOfBoundsException e){
             return false;
         }
