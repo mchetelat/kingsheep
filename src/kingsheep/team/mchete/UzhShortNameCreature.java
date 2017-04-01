@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -15,11 +16,16 @@ import kingsheep.Simulator;
 import kingsheep.Type;
 
 public abstract class UzhShortNameCreature extends Creature {
-	private Square root;
-	LinkedHashSet<Square> path = new LinkedHashSet<>();
-	private Type map[][];
-	private List<Square> objectives;
+
 	private Square goal;
+
+	private Type map[][];
+
+	private Map<Square, Integer> objectives;
+
+	LinkedHashSet<Square> path;
+
+	private Square root;
 
 	public UzhShortNameCreature(Type type, Simulator parent, int playerID, int x, int y) {
 		super(type, parent, playerID, x, y);
@@ -28,55 +34,75 @@ public abstract class UzhShortNameCreature extends Creature {
 	public String getNickname() {
 		return "BigKingSheepXXL";
 	}
-	
-	private void printMap(Type map[][]){
-        for (int i = 0; i < map.length; ++i)
-        {
-            for (int j = 0; j < map[0].length; ++j)
-            {
-                System.out.print(map[i][j].ordinal());
-            }
-            System.out.println("");
-        }
-        System.out.println("-------------------");
-    }
-	
+
 	// i = y, j = x
 	protected Move getAction(Type map[][]) {
 		this.map = map;
-		objectives = new ArrayList<>();
+		objectives = new LinkedHashMap<>();
+		path = new LinkedHashSet<>();
+		root = new Square(map[y][x], x, y);
 
-		printMap(map);
-		
 		for (int i = 0; i < this.map.length - 1; i++) {
 			for (int j = 0; j < this.map[0].length - 1; j++) {
 				if (this.map[i][j].equals(Type.GRASS)) {
-					objectives.add(new Square(Type.GRASS, j, i));
+					objectives.put(new Square(Type.GRASS, j, i), 1000);
 				}
 				if (this.map[i][j].equals(Type.RHUBARB)) {
-					objectives.add(new Square(Type.RHUBARB, j, i));
+					objectives.put(new Square(Type.RHUBARB, j, i), 1000);
 				}
 			}
 		}
 
-		for (Square objective : objectives) {
-			root = new Square(map[y][x], x, y);
-			goal = objective;
-			return root.aStarSearch();
+		for (Entry<Square, Integer> objective : objectives.entrySet()) {
+			path.clear();
+			goal = objective.getKey();
+			root.aStarSearch();
+			objectives.put(objective.getKey(), path.size() - 1);
 		}
-		return null;
+
+		List<Square> sortedObjectives = objectives.entrySet().stream()
+				.sorted(Map.Entry.<Square, Integer>comparingByValue()).map(Map.Entry::getKey)
+				.collect(Collectors.toList());
+
+		path.clear();
+
+		if (sortedObjectives.size() > 0) {
+			goal = sortedObjectives.get(0);
+		}
+
+		root.aStarSearch();
+
+		return getNextMove();
+	}
+
+	private Move getNextMove() {
+		Move ret = Move.WAIT;
+		for (Square nextSquare : path) {
+			if (nextSquare.gotHereFrom != null && nextSquare.gotHereFrom.x == this.x
+					&& nextSquare.gotHereFrom.y == this.y) {
+				ret = nextSquare.howToGetHere;
+			}
+		}
+		return ret;
 	}
 
 	class Square {
-		Type type;
-		private int x, y;
-		private Move howToGetHere;
+
+		Set<Square> closedSet;
+
+		Map<Square, Integer> fScore;
+
 		private Square gotHereFrom;
-		Set<Square> openSet = new HashSet<>();
-		Set<Square> closedSet = new HashSet<>();
-		Map<Square, Square> cameFrom = new HashMap<>();
-		Map<Square, Integer> gScore = new HashMap<>();
-		Map<Square, Integer> fScore = new LinkedHashMap<>();
+
+		Map<Square, Integer> gScore;
+
+		private Move howToGetHere;
+
+		Set<Square> openSet;
+
+		Type type;
+
+		private int x, y;
 
 		protected Square(Type type, int x, int y) {
 			this.type = type;
@@ -85,14 +111,27 @@ public abstract class UzhShortNameCreature extends Creature {
 		}
 
 		protected Square(Type type, int x, int y, Move howToGetHere, Square gotHereFrom) {
+			this.gotHereFrom = gotHereFrom;
+			this.howToGetHere = howToGetHere;
 			this.type = type;
 			this.x = x;
 			this.y = y;
-			this.howToGetHere = howToGetHere;
-			this.gotHereFrom = gotHereFrom;
 		}
 
-		protected Move aStarSearch() {
+		private void addNeighbourToListIfAccessible(List<Square> accessibleNeighbourSquares, Square neighbour) {
+			if (neighbour.isSquareVisitable()) {
+				accessibleNeighbourSquares.add(neighbour);
+			}
+		}
+
+		protected void aStarSearch() {
+			closedSet = new HashSet<>();
+			fScore = new LinkedHashMap<>();
+			gotHereFrom = null;
+			gScore = new HashMap<>();
+			howToGetHere = null;
+			openSet = new HashSet<>();
+
 			openSet.add(this);
 			gScore.put(this, 0);
 			fScore.put(this, getHeuristicCostEstimate(this, goal));
@@ -107,23 +146,19 @@ public abstract class UzhShortNameCreature extends Creature {
 
 				for (Square entry : sortedSquaresfScore) {
 					System.out.print(entry + " fScore: " + fScore.get(entry));
-					if (setContainsSquare(openSet, entry)) {
+					if (isSetContainsSquare(openSet, entry)) {
 						System.out.println(" -> taken!");
+						System.out.println("");
 						current = entry;
 						break;
 					}
 					System.out.println("");
 				}
 
-				if (current != null && current.isSquareContainingObjective()) {
+				if (current != null && current.isGoalReached()) {
 					System.out.println("OBJECTIVE_REACHED");
 					current.reconstructPath();
-					for (Square entry : path) {
-						if (entry.gotHereFrom != null && entry.gotHereFrom.x == this.x
-								&& entry.gotHereFrom.y == this.y) {
-							return entry.howToGetHere;
-						}
-					}
+					break;
 				}
 
 				openSet.remove(current);
@@ -131,61 +166,21 @@ public abstract class UzhShortNameCreature extends Creature {
 
 				for (Square neighbour : getAccessibleNeighbourSquares(current, current.x, current.y, current)) {
 
-					if (!setContainsSquare(closedSet, neighbour)) {
+					if (!isSetContainsSquare(closedSet, neighbour)) {
 
 						int tentative_gScore = gScore.get(current) + getHeuristicCostEstimate(current, neighbour);
 
-						if (!setContainsSquare(openSet, neighbour)) {
+						if (!isSetContainsSquare(openSet, neighbour)) {
 							openSet.add(neighbour);
 						}
 
 						if (gScore.get(neighbour) == null || tentative_gScore < gScore.get(neighbour)) {
-							cameFrom.put(neighbour, current);
 							gScore.put(neighbour, tentative_gScore);
-							fScore.put(neighbour,
-									gScore.get(neighbour) + getHeuristicCostEstimate(neighbour, goal));
+							fScore.put(neighbour, gScore.get(neighbour) + getHeuristicCostEstimate(neighbour, goal));
 						}
 					}
 				}
 			}
-
-			return null;
-		}
-
-		// private void reconstructPath(Square current) {
-		// for (Entry<Square, Square> entry : cameFrom.entrySet()) {
-		// if ((entry.getKey().x == current.x && entry.getKey().y == current.y)
-		// || (entry.getValue().x == current.x && entry.getValue().y ==
-		// current.y)) {
-		// path.add(current);
-		// if (current.gotHereFrom != null) {
-		// current = current.gotHereFrom;
-		// } else {
-		// break;
-		// }
-		// }
-		// }
-		// }
-
-		private void reconstructPath() {
-			path.add(this);
-			if (this.gotHereFrom != null) {
-				this.gotHereFrom.reconstructPath();
-			}
-		}
-
-		private boolean setContainsSquare(Set<Square> set, Square square) {
-			boolean ret = false;
-			for (Square entry : set) {
-				if (entry.x == square.x && entry.y == square.y) {
-					ret = true;
-				}
-			}
-			return ret;
-		}
-
-		private int getHeuristicCostEstimate(Square start, Square goal) {
-			return Math.abs(goal.x - start.x) + Math.abs(goal.y - start.y);
 		}
 
 		private List<Square> getAccessibleNeighbourSquares(Square origin, int xPos, int yPos, Square current) {
@@ -205,13 +200,19 @@ public abstract class UzhShortNameCreature extends Creature {
 			return accessibleNeighbourSquares;
 		}
 
-		private void addNeighbourToListIfAccessible(List<Square> accessibleNeighbourSquares, Square neighbour) {
-			if (neighbour.isSquareVisitable()) {
-				accessibleNeighbourSquares.add(neighbour);
-			}
+		private int getHeuristicCostEstimate(Square start, Square goal) {
+			return Math.abs(goal.x - start.x) + Math.abs(goal.y - start.y);
 		}
 
-		private boolean isSquareContainingObjective() {
+		protected int getXCoordinate() {
+			return x;
+		}
+
+		protected int getYCoordinate() {
+			return y;
+		}
+
+		private boolean isGoalReached() {
 			if (goal.x == this.x && goal.y == this.y) {
 				return true;
 			}
@@ -226,14 +227,24 @@ public abstract class UzhShortNameCreature extends Creature {
 			return false;
 		}
 
-		protected int getXCoordinate() {
-			return x;
+		private void reconstructPath() {
+			path.add(this);
+			if (this.gotHereFrom != null) {
+				this.gotHereFrom.reconstructPath();
+			}
 		}
 
-		protected int getYCoordinate() {
-			return y;
+		private boolean isSetContainsSquare(Set<Square> set, Square square) {
+			boolean ret = false;
+			for (Square entry : set) {
+				if (entry.x == square.x && entry.y == square.y) {
+					ret = true;
+				}
+			}
+			return ret;
 		}
 
+		@Override
 		public String toString() {
 			return getXCoordinate() + "_" + getYCoordinate();
 		}

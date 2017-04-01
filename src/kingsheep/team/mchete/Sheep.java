@@ -11,5 +11,8 @@ public class Sheep extends UzhShortNameCreature {
 
 	protected void think(Type map[][]) {
 		move = getAction(map);
+		if (move == null) {
+			move = Move.WAIT;
+		}
 	}
 }
