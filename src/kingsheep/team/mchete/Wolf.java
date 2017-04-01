@@ -2,7 +2,7 @@ package kingsheep.team.mchete;
 
 import kingsheep.*;
 
-public class Wolf extends UzhShortNameCreature {
+public class Wolf extends McheteCreature {
 
     public Wolf(Type type, Simulator parent, int playerID, int x, int y) {
         super(type, parent, playerID, x, y);

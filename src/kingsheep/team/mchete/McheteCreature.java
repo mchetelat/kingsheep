@@ -15,7 +15,7 @@ import kingsheep.Creature;
 import kingsheep.Simulator;
 import kingsheep.Type;
 
-public abstract class UzhShortNameCreature extends Creature {
+public abstract class McheteCreature extends Creature {
 
 	private Square goal;
 
@@ -27,7 +27,7 @@ public abstract class UzhShortNameCreature extends Creature {
 
 	private Square root;
 
-	public UzhShortNameCreature(Type type, Simulator parent, int playerID, int x, int y) {
+	public McheteCreature(Type type, Simulator parent, int playerID, int x, int y) {
 		super(type, parent, playerID, x, y);
 	}
 
