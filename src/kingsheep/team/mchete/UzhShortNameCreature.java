@@ -21,7 +21,7 @@ public abstract class UzhShortNameCreature extends Creature {
 
 	private Type map[][];
 
-	private Map<Square, Integer> objectives;
+	private Map<Square, Double> objectives;
 
 	LinkedHashSet<Square> path;
 
@@ -34,15 +34,33 @@ public abstract class UzhShortNameCreature extends Creature {
 	private Square evaluateNextGoal() {
 		Square ret = null;
 
-		for (Entry<Square, Integer> objective : objectives.entrySet()) {
+		// System.out.println("Evaluation next goal");
+		// System.out.println("");
+
+		for (Entry<Square, Double> objective : objectives.entrySet()) {
 			path.clear();
 			goal = objective.getKey();
 			root.aStarSearch();
-			objectives.put(objective.getKey(), path.size() - 1);
+
+			/**
+			 * Value the path to a square containing a rhubarb 5 times better
+			 * than the path to a square containing grass
+			 **/
+			if (objective.getKey().type == Type.GRASS) {
+				objectives.put(objective.getKey(), ((double) 1 / (double) (path.size() - 1)));
+			} else if (objective.getKey().type == Type.RHUBARB) {
+				objectives.put(objective.getKey(), ((double) 5 / (double) (path.size() - 1)));
+			}
+
+			// System.out.println("Square: " + objective.getKey() + " Score: " +
+			// objective.getValue());
 		}
 
+		// System.out.println("------------------------------------");
+		// System.out.println("");
+
 		List<Square> sortedObjectives = objectives.entrySet().stream()
-				.sorted(Map.Entry.<Square, Integer>comparingByValue()).map(Map.Entry::getKey)
+				.sorted(Map.Entry.<Square, Double>comparingByValue().reversed()).map(Map.Entry::getKey)
 				.collect(Collectors.toList());
 
 		if (sortedObjectives.size() > 0) {
@@ -89,10 +107,10 @@ public abstract class UzhShortNameCreature extends Creature {
 		for (int i = 0; i < this.map.length - 1; i++) {
 			for (int j = 0; j < this.map[0].length - 1; j++) {
 				if (this.map[i][j].equals(Type.GRASS)) {
-					objectives.put(new Square(Type.GRASS, j, i), 1000);
+					objectives.put(new Square(Type.GRASS, j, i), (double) 1000);
 				}
 				if (this.map[i][j].equals(Type.RHUBARB)) {
-					objectives.put(new Square(Type.RHUBARB, j, i), 1000);
+					objectives.put(new Square(Type.RHUBARB, j, i), (double) 1000);
 				}
 			}
 		}
