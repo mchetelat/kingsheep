@@ -17,9 +17,11 @@ import kingsheep.Type;
 
 public abstract class McheteCreature extends Creature {
 
-	private Square badWolf;
+	protected Square badWolf;
 
 	private Square goal;
+
+	protected Square greedySheep;
 
 	protected Type map[][];
 
@@ -35,31 +37,19 @@ public abstract class McheteCreature extends Creature {
 		super(type, parent, playerID, x, y);
 	}
 
-	private Square evaluateNextGoal(boolean fleeMode) {
+	private Square evaluateNextGoal() {
 		Square ret = null;
 		List<Square> sortedObjectives = new ArrayList<>();
 
 		for (Entry<Square, Integer> objective : objectives.entrySet()) {
-			path.clear();
 			goal = objective.getKey();
-
-			if (fleeMode) {
-				badWolf.aStarSearch();
-			} else {
-				root.aStarSearch();
-			}
+			root.aStarSearch();
 
 			objectives.put(objective.getKey(), (path.size() - 1));
 		}
 
-		if (fleeMode) {
-			sortedObjectives = objectives.entrySet().stream()
-					.sorted(Map.Entry.<Square, Integer>comparingByValue().reversed()).map(Map.Entry::getKey)
-					.collect(Collectors.toList());
-		} else {
-			sortedObjectives = objectives.entrySet().stream().sorted(Map.Entry.<Square, Integer>comparingByValue())
-					.map(Map.Entry::getKey).collect(Collectors.toList());
-		}
+		sortedObjectives = objectives.entrySet().stream().sorted(Map.Entry.<Square, Integer>comparingByValue())
+				.map(Map.Entry::getKey).collect(Collectors.toList());
 
 		if (sortedObjectives.size() > 0) {
 			ret = sortedObjectives.get(0);
@@ -68,57 +58,54 @@ public abstract class McheteCreature extends Creature {
 		return ret;
 	}
 
-	protected Move getAction(char[] objectives) {
-		return getAction(objectives, false);
-	}
-
 	// i = y, j = x
 	protected Move getAction(char[] objectives, boolean fleeMode) {
 		this.objectives = new LinkedHashMap<>();
 		root = new Square(map[y][x], x, y);
 		path = new LinkedHashSet<>();
+		scanMapForItems(objectives);
 
-		scanMapForElements(objectives);
-		goal = evaluateNextGoal(fleeMode);
-		path.clear();
+		if (!fleeMode) {
+			goal = evaluateNextGoal();
+		} else {
+			goal = badWolf;
+		}
 
 		if (goal != null) {
 			root.aStarSearch();
 		}
 
-		return getNextMove();
+		return getNextMove(fleeMode);
 	}
 
-	private Move getNextMove() {
+	private Move getNextMove(boolean fleeMode) {
 		Move ret = Move.WAIT;
-		for (Square nextSquare : path) {
-			if (nextSquare.gotHereFrom != null && nextSquare.gotHereFrom.x == this.x
-					&& nextSquare.gotHereFrom.y == this.y) {
-				ret = nextSquare.howToGetHere;
+
+		if (!fleeMode) {
+			for (Square nextSquare : path) {
+				if (nextSquare.gotHereFrom != null && nextSquare.gotHereFrom.x == this.x
+						&& nextSquare.gotHereFrom.y == this.y) {
+					ret = nextSquare.howToGetHere;
+				}
+			}
+		} else {
+			Square currentLocation = new Square(this.type, x, y);
+			int pathLengthToBadWolf = path.size();
+
+			for (Square neighbour : currentLocation.getAccessibleNeighbourSquares()) {
+				neighbour.aStarSearch();
+
+				if (path.size() > pathLengthToBadWolf) {
+					ret = neighbour.howToGetHere;
+				}
 			}
 		}
+
 		return ret;
 	}
 
 	public String getNickname() {
 		return "BigKingSheepXXL";
-	}
-
-	protected Move getRandomMove() {
-		int t = (int) (Math.random() * 4);
-
-		switch (t) {
-		case 0:
-			return Move.UP;
-		case 1:
-			return Move.DOWN;
-		case 2:
-			return Move.LEFT;
-		case 3:
-			return Move.RIGHT;
-		default:
-			return Move.WAIT;
-		}
 	}
 
 	protected Square getSquareFromMove(Move move) {
@@ -160,7 +147,7 @@ public abstract class McheteCreature extends Creature {
 		return ret;
 	}
 
-	private void scanMapForElements(char[] objectives) {
+	protected void scanMapForItems(char[] objectives) {
 		for (int i = 0; i < this.map.length; i++) {
 			for (int j = 0; j < this.map[0].length; j++) {
 				for (char entry : objectives) {
@@ -168,6 +155,8 @@ public abstract class McheteCreature extends Creature {
 						this.objectives.put(new Square(Type.getType(entry), j, i), 1000);
 					} else if (this.map[i][j].equals(Type.getType('4'))) {
 						badWolf = new Square(Type.getType('4'), j, i);
+					} else if (this.map[i][j].equals(Type.getType('3'))) {
+						greedySheep = new Square(Type.getType('3'), j, i);
 					}
 				}
 			}
@@ -215,10 +204,9 @@ public abstract class McheteCreature extends Creature {
 		private void aStarSearch() {
 			closedSet = new HashSet<>();
 			fScore = new LinkedHashMap<>();
-			gotHereFrom = null;
 			gScore = new HashMap<>();
-			howToGetHere = null;
 			openSet = new HashSet<>();
+			path.clear();
 
 			openSet.add(this);
 			gScore.put(this, 0);

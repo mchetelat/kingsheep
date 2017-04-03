@@ -13,7 +13,7 @@ public class Wolf extends McheteCreature {
 		char[] objectives = { '3' };
 
 		if (alive) {
-			move = getAction(objectives);
+			move = getAction(objectives, false);
 		}
 	}
 }
