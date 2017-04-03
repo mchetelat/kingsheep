@@ -129,6 +129,23 @@ public abstract class McheteCreature extends Creature {
 		return "BigKingSheepXXL";
 	}
 
+	protected Move getRandomMove() {
+		int t = (int) (Math.random() * 4);
+
+		switch (t) {
+		case 0:
+			return Move.UP;
+		case 1:
+			return Move.DOWN;
+		case 2:
+			return Move.LEFT;
+		case 3:
+			return Move.RIGHT;
+		default:
+			return Move.WAIT;
+		}
+	}
+
 	protected Square getSquareFromMove(Move move) {
 		int x, y;
 
@@ -217,7 +234,9 @@ public abstract class McheteCreature extends Creature {
 
 		private Type type;
 
-		private int x, y;
+		private int x;
+
+		private int y;
 
 		protected Square(Type type, int x, int y) {
 			this.type = type;
@@ -226,7 +245,7 @@ public abstract class McheteCreature extends Creature {
 		}
 
 		private void addNeighbourToListIfAccessible(List<Square> accessibleNeighbourSquares, Square neighbour) {
-			if (neighbour.isSquareVisitable()) {
+			if (neighbour.type != Type.FENCE) {
 				accessibleNeighbourSquares.add(neighbour);
 			}
 		}
@@ -373,7 +392,7 @@ public abstract class McheteCreature extends Creature {
 
 		private boolean isSquareVisitable() {
 			boolean ret = true;
-			if (type == Type.FENCE) {
+			if (type == Type.FENCE || type == Type.WOLF1 || type == Type.SHEEP2) {
 				ret = false;
 			}
 			return ret;

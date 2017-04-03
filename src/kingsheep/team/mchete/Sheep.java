@@ -5,6 +5,8 @@ import kingsheep.Type;
 
 public class Sheep extends McheteCreature {
 
+	private Square lastPosition;
+
 	private char[] objectives = { 'r', 'g' };
 
 	public Sheep(Type type, Simulator parent, int playerID, int x, int y) {
@@ -17,20 +19,27 @@ public class Sheep extends McheteCreature {
 
 	protected void think(Type map[][]) {
 		this.map = map;
-
-		if (alive && !noMoreFoodAvailable) {
-			move = getAction(objectives, false);
-
-			if (move == Move.WAIT) {
-				noMoreFoodAvailable = true;
-				fleeFromWolf();
-			}
-
-			if (!getSquareFromMove(move).isSquareSafe()) {
-				fleeFromWolf();
-			}
+		if (lastPosition != null
+				&& (!(this.x == lastPosition.getXCoordinate()) || !(this.y == lastPosition.getYCoordinate()))) {
+			move = getRandomMove();
 		} else {
-			fleeFromWolf();
+
+			if (alive && !noMoreFoodAvailable) {
+				move = getAction(objectives, false);
+
+				if (move == Move.WAIT) {
+					noMoreFoodAvailable = true;
+					fleeFromWolf();
+				}
+
+				if (!getSquareFromMove(move).isSquareSafe()) {
+					fleeFromWolf();
+				}
+			} else {
+				fleeFromWolf();
+			}
 		}
+
+		lastPosition = getSquareFromMove(move);
 	}
 }
