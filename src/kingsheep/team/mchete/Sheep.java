@@ -4,9 +4,7 @@ import kingsheep.Simulator;
 import kingsheep.Type;
 
 public class Sheep extends McheteCreature {
-	
-	Move lastMove;
-	
+
 	private boolean noMoreFoodAvailable = false;
 
 	public Sheep(Type type, Simulator parent, int playerID, int x, int y) {
@@ -14,7 +12,12 @@ public class Sheep extends McheteCreature {
 	}
 
 	private void fleeFromHungryWolf(Type map[][]) {
-		move = lastMove;
+		char[] objectives = { '.' };
+		move = getAction(map, objectives, true);
+
+		while (!isSquareSafe(map, move)) {
+			move = getRandomMove();
+		}
 	}
 
 	protected void think(Type map[][]) {
@@ -23,15 +26,20 @@ public class Sheep extends McheteCreature {
 		if (alive && !noMoreFoodAvailable) {
 			move = getAction(map, objectives);
 
+			if (!isSquareSafe(map, move)) {
+				fleeFromHungryWolf(map);
+			}
+
 			if (move == Move.WAIT) {
 				noMoreFoodAvailable = true;
 				fleeFromHungryWolf(map);
 			}
-			// Check if hungry wolf is on square
 		} else {
 			fleeFromHungryWolf(map);
 		}
-		
-		lastMove = move;
+
+		if (move == null) {
+			move = Move.WAIT;
+		}
 	}
 }
