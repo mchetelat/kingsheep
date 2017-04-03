@@ -21,11 +21,11 @@ public abstract class McheteCreature extends Creature {
 
 	private Square goal;
 
-	private Square greedySheep;
+	protected Type map[][];
 
-	private Type map[][];
+	protected boolean noMoreFoodAvailable = false;
 
-	private Map<Square, Double> objectives;
+	private Map<Square, Integer> objectives;
 
 	private LinkedHashSet<Square> path;
 
@@ -37,35 +37,27 @@ public abstract class McheteCreature extends Creature {
 
 	private Square evaluateNextGoal(boolean fleeMode) {
 		Square ret = null;
-		List<Square> sortedObjectives;
+		List<Square> sortedObjectives = new ArrayList<>();
 
-		for (Entry<Square, Double> objective : objectives.entrySet()) {
+		for (Entry<Square, Integer> objective : objectives.entrySet()) {
 			path.clear();
 			goal = objective.getKey();
 
-			if (!fleeMode) {
-				root.aStarSearch();
-			} else {
+			if (fleeMode) {
 				badWolf.aStarSearch();
+			} else {
+				root.aStarSearch();
 			}
 
-			/**
-			 * Value the path to a square containing a rhubarb 5 times better
-			 * than the path to a square containing grass
-			 **/
-			if (objective.getKey().type == Type.RHUBARB) {
-				objectives.put(objective.getKey(), ((double) 5 / (double) (path.size() - 1)));
-			} else {
-				objectives.put(objective.getKey(), ((double) 1 / (double) (path.size() - 1)));
-			}
+			objectives.put(objective.getKey(), (path.size() - 1));
 		}
 
-		if (!fleeMode) {
+		if (fleeMode) {
 			sortedObjectives = objectives.entrySet().stream()
-					.sorted(Map.Entry.<Square, Double>comparingByValue().reversed()).map(Map.Entry::getKey)
+					.sorted(Map.Entry.<Square, Integer>comparingByValue().reversed()).map(Map.Entry::getKey)
 					.collect(Collectors.toList());
 		} else {
-			sortedObjectives = objectives.entrySet().stream().sorted(Map.Entry.<Square, Double>comparingByValue())
+			sortedObjectives = objectives.entrySet().stream().sorted(Map.Entry.<Square, Integer>comparingByValue())
 					.map(Map.Entry::getKey).collect(Collectors.toList());
 		}
 
@@ -76,13 +68,12 @@ public abstract class McheteCreature extends Creature {
 		return ret;
 	}
 
-	protected Move getAction(Type map[][], char[] objectives) {
-		return getAction(map, objectives, false);
+	protected Move getAction(char[] objectives) {
+		return getAction(objectives, false);
 	}
 
 	// i = y, j = x
-	protected Move getAction(Type map[][], char[] objectives, boolean fleeMode) {
-		this.map = map;
+	protected Move getAction(char[] objectives, boolean fleeMode) {
 		this.objectives = new LinkedHashMap<>();
 		root = new Square(map[y][x], x, y);
 		path = new LinkedHashSet<>();
@@ -130,17 +121,7 @@ public abstract class McheteCreature extends Creature {
 		}
 	}
 
-	private boolean isCoordinateValid(Type map[][], int y, int x) {
-		try {
-			@SuppressWarnings("unused")
-			Type type = map[y][x];
-		} catch (ArrayIndexOutOfBoundsException e) {
-			return false;
-		}
-		return true;
-	}
-
-	protected boolean isSquareSafe(Type map[][], Move move) {
+	protected Square getSquareFromMove(Move move) {
 		int x, y;
 
 		if (move == Move.UP) {
@@ -152,21 +133,31 @@ public abstract class McheteCreature extends Creature {
 		} else if (move == Move.LEFT) {
 			x = this.x - 1;
 			y = this.y;
-		} else {
+		} else if (move == Move.RIGHT) {
 			x = this.x + 1;
+			y = this.y;
+		} else {
+			x = this.x;
 			y = this.y;
 		}
 
-		if (!isCoordinateValid(map, y, x)) {
-			return false;
+		if (isCoordinateValid(x, y)) {
+			return new Square(map[y][x], x, y);
+		} else {
+			return null;
 		}
+	}
 
-		Type type = map[y][x];
-
-		if (type == Type.FENCE || type == Type.WOLF2 || type == Type.SHEEP2 || type == Type.WOLF1) {
-			return false;
+	public boolean isCoordinateValid(int x, int y) {
+		boolean ret = false;
+		try {
+			@SuppressWarnings("unused")
+			Type type = map[y][x];
+			ret = true;
+		} catch (ArrayIndexOutOfBoundsException e) {
+			// do nothing
 		}
-		return true;
+		return ret;
 	}
 
 	private void scanMapForElements(char[] objectives) {
@@ -174,11 +165,9 @@ public abstract class McheteCreature extends Creature {
 			for (int j = 0; j < this.map[0].length; j++) {
 				for (char entry : objectives) {
 					if (this.map[i][j].equals(Type.getType(entry))) {
-						this.objectives.put(new Square(Type.getType(entry), j, i), (double) 1000);
+						this.objectives.put(new Square(Type.getType(entry), j, i), 1000);
 					} else if (this.map[i][j].equals(Type.getType('4'))) {
 						badWolf = new Square(Type.getType('4'), j, i);
-					} else if (this.map[i][j].equals(Type.getType('3'))) {
-						greedySheep = new Square(Type.getType('3'), j, i);
 					}
 				}
 			}
@@ -258,7 +247,7 @@ public abstract class McheteCreature extends Creature {
 				openSet.remove(current);
 				closedSet.add(current);
 
-				for (Square neighbour : getAccessibleNeighbourSquares(current, current.x, current.y, current)) {
+				for (Square neighbour : current.getAccessibleNeighbourSquares()) {
 
 					if (!isSetContainsSquare(closedSet, neighbour)) {
 
@@ -277,20 +266,29 @@ public abstract class McheteCreature extends Creature {
 			}
 		}
 
-		private List<Square> getAccessibleNeighbourSquares(Square origin, int xPos, int yPos, Square current) {
+		private List<Square> getAccessibleNeighbourSquares() {
 			List<Square> accessibleNeighbourSquares = new ArrayList<Square>();
-			try {
-				addNeighbourToListIfAccessible(accessibleNeighbourSquares, new Square(map[yPos - 1][xPos],
-						origin.getXCoordinate(), origin.getYCoordinate() - 1, Move.UP, current));
-				addNeighbourToListIfAccessible(accessibleNeighbourSquares, new Square(map[yPos + 1][xPos],
-						origin.getXCoordinate(), origin.getYCoordinate() + 1, Move.DOWN, current));
-				addNeighbourToListIfAccessible(accessibleNeighbourSquares, new Square(map[yPos][xPos + 1],
-						origin.getXCoordinate() + 1, origin.getYCoordinate(), Move.RIGHT, current));
-				addNeighbourToListIfAccessible(accessibleNeighbourSquares, new Square(map[yPos][xPos - 1],
-						origin.getXCoordinate() - 1, origin.getYCoordinate(), Move.LEFT, current));
-			} catch (ArrayIndexOutOfBoundsException e) {
-				// do not add since this square is outside of the map
+
+			if (isCoordinateValid(x, y - 1)) {
+				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
+						new Square(map[y - 1][x], getXCoordinate(), getYCoordinate() - 1, Move.UP, this));
 			}
+
+			if (isCoordinateValid(x, y + 1)) {
+				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
+						new Square(map[y + 1][x], getXCoordinate(), getYCoordinate() + 1, Move.DOWN, this));
+			}
+
+			if (isCoordinateValid(x + 1, y)) {
+				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
+						new Square(map[y][x + 1], getXCoordinate() + 1, getYCoordinate(), Move.RIGHT, this));
+			}
+
+			if (isCoordinateValid(x - 1, y)) {
+				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
+						new Square(map[y][x - 1], getXCoordinate() - 1, getYCoordinate(), Move.LEFT, this));
+			}
+
 			return accessibleNeighbourSquares;
 		}
 
@@ -310,6 +308,14 @@ public abstract class McheteCreature extends Creature {
 			return y;
 		}
 
+		private boolean isDeadly() {
+			boolean ret = false;
+			if (type == Type.WOLF2) {
+				ret = true;
+			}
+			return ret;
+		}
+
 		private boolean isGoalReached() {
 			if (goal.x == this.x && goal.y == this.y) {
 				return true;
@@ -327,12 +333,19 @@ public abstract class McheteCreature extends Creature {
 			return ret;
 		}
 
-		private boolean isSquareVisitable() {
-			if (type != Type.FENCE) {
+		protected boolean isSquareSafe() {
+			if (isSquareVisitable() && !isDeadly()) {
 				return true;
 			}
-
 			return false;
+		}
+
+		private boolean isSquareVisitable() {
+			if (type == Type.FENCE) {
+				return false;
+			}
+
+			return true;
 		}
 
 		private void reconstructPath() {

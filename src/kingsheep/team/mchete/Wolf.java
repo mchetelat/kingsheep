@@ -9,14 +9,11 @@ public class Wolf extends McheteCreature {
 	}
 
 	protected void think(Type map[][]) {
+		this.map = map;
 		char[] objectives = { '3' };
 
 		if (alive) {
-			move = getAction(map, objectives);
-
-			// while (!isSquareSafe(map, move)) {
-			// move = getRandomMove();
-			// }
+			move = getAction(objectives);
 		}
 	}
 }

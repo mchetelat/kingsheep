@@ -5,41 +5,33 @@ import kingsheep.Type;
 
 public class Sheep extends McheteCreature {
 
-	private boolean noMoreFoodAvailable = false;
-
 	public Sheep(Type type, Simulator parent, int playerID, int x, int y) {
 		super(type, parent, playerID, x, y);
 	}
 
-	private void fleeFromHungryWolf(Type map[][]) {
+	private void fleeFromWolf() {
 		char[] objectives = { '.' };
-		move = getAction(map, objectives, true);
-
-		while (!isSquareSafe(map, move)) {
-			move = getRandomMove();
-		}
+		move = getAction(objectives, true);
 	}
 
 	protected void think(Type map[][]) {
+		this.map = map;
 		char[] objectives = { 'g', 'r' };
 
 		if (alive && !noMoreFoodAvailable) {
-			move = getAction(map, objectives);
-
-			if (!isSquareSafe(map, move)) {
-				fleeFromHungryWolf(map);
-			}
+			move = getAction(objectives);
+			System.out.println(move);
 
 			if (move == Move.WAIT) {
 				noMoreFoodAvailable = true;
-				fleeFromHungryWolf(map);
+				fleeFromWolf();
+			}
+
+			if (!getSquareFromMove(move).isSquareSafe()) {
+				fleeFromWolf();
 			}
 		} else {
-			fleeFromHungryWolf(map);
-		}
-
-		if (move == null) {
-			move = Move.WAIT;
+			fleeFromWolf();
 		}
 	}
 }
