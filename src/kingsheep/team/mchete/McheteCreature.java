@@ -17,13 +17,17 @@ import kingsheep.Type;
 
 public abstract class McheteCreature extends Creature {
 
+	private Square badWolf;
+
 	private Square goal;
+
+	private Square greedySheep;
 
 	private Type map[][];
 
 	private Map<Square, Double> objectives;
 
-	LinkedHashSet<Square> path;
+	private LinkedHashSet<Square> path;
 
 	private Square root;
 
@@ -31,28 +35,39 @@ public abstract class McheteCreature extends Creature {
 		super(type, parent, playerID, x, y);
 	}
 
-	private Square evaluateNextGoal() {
+	private Square evaluateNextGoal(boolean fleeMode) {
 		Square ret = null;
+		List<Square> sortedObjectives;
 
 		for (Entry<Square, Double> objective : objectives.entrySet()) {
 			path.clear();
 			goal = objective.getKey();
-			root.aStarSearch();
+
+			if (!fleeMode) {
+				root.aStarSearch();
+			} else {
+				badWolf.aStarSearch();
+			}
 
 			/**
 			 * Value the path to a square containing a rhubarb 5 times better
 			 * than the path to a square containing grass
 			 **/
-			if (objective.getKey().type == Type.GRASS) {
-				objectives.put(objective.getKey(), ((double) 1 / (double) (path.size() - 1)));
-			} else if (objective.getKey().type == Type.RHUBARB) {
+			if (objective.getKey().type == Type.RHUBARB) {
 				objectives.put(objective.getKey(), ((double) 5 / (double) (path.size() - 1)));
+			} else {
+				objectives.put(objective.getKey(), ((double) 1 / (double) (path.size() - 1)));
 			}
 		}
 
-		List<Square> sortedObjectives = objectives.entrySet().stream()
-				.sorted(Map.Entry.<Square, Double>comparingByValue().reversed()).map(Map.Entry::getKey)
-				.collect(Collectors.toList());
+		if (!fleeMode) {
+			sortedObjectives = objectives.entrySet().stream()
+					.sorted(Map.Entry.<Square, Double>comparingByValue().reversed()).map(Map.Entry::getKey)
+					.collect(Collectors.toList());
+		} else {
+			sortedObjectives = objectives.entrySet().stream().sorted(Map.Entry.<Square, Double>comparingByValue())
+					.map(Map.Entry::getKey).collect(Collectors.toList());
+		}
 
 		if (sortedObjectives.size() > 0) {
 			ret = sortedObjectives.get(0);
@@ -61,19 +76,19 @@ public abstract class McheteCreature extends Creature {
 		return ret;
 	}
 
-	public String getNickname() {
-		return "BigKingSheepXXL";
+	protected Move getAction(Type map[][], char[] objectives) {
+		return getAction(map, objectives, false);
 	}
 
 	// i = y, j = x
-	protected Move getAction(Type map[][], char[] objectives) {
+	protected Move getAction(Type map[][], char[] objectives, boolean fleeMode) {
 		this.map = map;
 		this.objectives = new LinkedHashMap<>();
-		path = new LinkedHashSet<>();
 		root = new Square(map[y][x], x, y);
+		path = new LinkedHashSet<>();
 
-		scanMapForObjectives(objectives);
-		goal = evaluateNextGoal();
+		scanMapForElements(objectives);
+		goal = evaluateNextGoal(fleeMode);
 		path.clear();
 
 		if (goal != null) {
@@ -94,12 +109,76 @@ public abstract class McheteCreature extends Creature {
 		return ret;
 	}
 
-	private void scanMapForObjectives(char[] objectives) {
-		for (int i = 0; i < this.map.length - 1; i++) {
-			for (int j = 0; j < this.map[0].length - 1; j++) {
+	public String getNickname() {
+		return "BigKingSheepXXL";
+	}
+
+	protected Move getRandomMove() {
+		int t = (int) (Math.random() * 4);
+
+		switch (t) {
+		case 0:
+			return Move.UP;
+		case 1:
+			return Move.DOWN;
+		case 2:
+			return Move.LEFT;
+		case 3:
+			return Move.RIGHT;
+		default:
+			return Move.WAIT;
+		}
+	}
+
+	private boolean isCoordinateValid(Type map[][], int y, int x) {
+		try {
+			@SuppressWarnings("unused")
+			Type type = map[y][x];
+		} catch (ArrayIndexOutOfBoundsException e) {
+			return false;
+		}
+		return true;
+	}
+
+	protected boolean isSquareSafe(Type map[][], Move move) {
+		int x, y;
+
+		if (move == Move.UP) {
+			x = this.x;
+			y = this.y - 1;
+		} else if (move == Move.DOWN) {
+			x = this.x;
+			y = this.y + 1;
+		} else if (move == Move.LEFT) {
+			x = this.x - 1;
+			y = this.y;
+		} else {
+			x = this.x + 1;
+			y = this.y;
+		}
+
+		if (!isCoordinateValid(map, y, x)) {
+			return false;
+		}
+
+		Type type = map[y][x];
+
+		if (type == Type.FENCE || type == Type.WOLF2 || type == Type.SHEEP2 || type == Type.WOLF1) {
+			return false;
+		}
+		return true;
+	}
+
+	private void scanMapForElements(char[] objectives) {
+		for (int i = 0; i < this.map.length; i++) {
+			for (int j = 0; j < this.map[0].length; j++) {
 				for (char entry : objectives) {
 					if (this.map[i][j].equals(Type.getType(entry))) {
 						this.objectives.put(new Square(Type.getType(entry), j, i), (double) 1000);
+					} else if (this.map[i][j].equals(Type.getType('4'))) {
+						badWolf = new Square(Type.getType('4'), j, i);
+					} else if (this.map[i][j].equals(Type.getType('3'))) {
+						greedySheep = new Square(Type.getType('3'), j, i);
 					}
 				}
 			}
@@ -108,19 +187,19 @@ public abstract class McheteCreature extends Creature {
 
 	class Square {
 
-		Set<Square> closedSet;
+		private Set<Square> closedSet;
 
-		Map<Square, Integer> fScore;
+		private Map<Square, Integer> fScore;
 
 		private Square gotHereFrom;
 
-		Map<Square, Integer> gScore;
+		private Map<Square, Integer> gScore;
 
 		private Move howToGetHere;
 
-		Set<Square> openSet;
+		private Set<Square> openSet;
 
-		Type type;
+		private Type type;
 
 		private int x, y;
 
@@ -144,7 +223,7 @@ public abstract class McheteCreature extends Creature {
 			}
 		}
 
-		protected void aStarSearch() {
+		private void aStarSearch() {
 			closedSet = new HashSet<>();
 			fScore = new LinkedHashMap<>();
 			gotHereFrom = null;
@@ -165,19 +244,13 @@ public abstract class McheteCreature extends Creature {
 				Square current = null;
 
 				for (Square entry : sortedSquaresfScore) {
-					// System.out.print(entry + " fScore: " +
-					// fScore.get(entry));
 					if (isSetContainsSquare(openSet, entry)) {
-						// System.out.println(" -> taken!");
-						// System.out.println("");
 						current = entry;
 						break;
 					}
-					// System.out.println("");
 				}
 
 				if (current != null && current.isGoalReached()) {
-					// System.out.println("OBJECTIVE_REACHED");
 					current.reconstructPath();
 					break;
 				}
@@ -225,6 +298,10 @@ public abstract class McheteCreature extends Creature {
 			return Math.abs(goal.x - start.x) + Math.abs(goal.y - start.y);
 		}
 
+		protected Move getHowToGetHere() {
+			return howToGetHere;
+		}
+
 		protected int getXCoordinate() {
 			return x;
 		}
@@ -240,6 +317,16 @@ public abstract class McheteCreature extends Creature {
 			return false;
 		}
 
+		private boolean isSetContainsSquare(Set<Square> set, Square square) {
+			boolean ret = false;
+			for (Square entry : set) {
+				if (entry.x == square.x && entry.y == square.y) {
+					ret = true;
+				}
+			}
+			return ret;
+		}
+
 		private boolean isSquareVisitable() {
 			if (type != Type.FENCE) {
 				return true;
@@ -253,16 +340,6 @@ public abstract class McheteCreature extends Creature {
 			if (this.gotHereFrom != null) {
 				this.gotHereFrom.reconstructPath();
 			}
-		}
-
-		private boolean isSetContainsSquare(Set<Square> set, Square square) {
-			boolean ret = false;
-			for (Square entry : set) {
-				if (entry.x == square.x && entry.y == square.y) {
-					ret = true;
-				}
-			}
-			return ret;
 		}
 
 		@Override
