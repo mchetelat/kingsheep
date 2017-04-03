@@ -17,11 +17,9 @@ import kingsheep.Type;
 
 public abstract class McheteCreature extends Creature {
 
-	protected Square badWolf;
+	private Square badWolf;
 
 	private Square goal;
-
-	protected Square greedySheep;
 
 	protected Type map[][];
 
@@ -32,6 +30,16 @@ public abstract class McheteCreature extends Creature {
 	private LinkedHashSet<Square> path;
 
 	private Square root;
+
+	private Map<Square, Square> cameFrom;
+
+	private Set<Square> closedSet;
+
+	private Map<Square, Integer> fScore;
+
+	private Map<Square, Integer> gScore;
+
+	private Set<Square> openSet;
 
 	public McheteCreature(Type type, Simulator parent, int playerID, int x, int y) {
 		super(type, parent, playerID, x, y);
@@ -82,10 +90,15 @@ public abstract class McheteCreature extends Creature {
 		Move ret = Move.WAIT;
 
 		if (!fleeMode) {
-			for (Square nextSquare : path) {
-				if (nextSquare.gotHereFrom != null && nextSquare.gotHereFrom.x == this.x
-						&& nextSquare.gotHereFrom.y == this.y) {
-					ret = nextSquare.howToGetHere;
+			for (Square entry : path) {
+				if (entry.x - 1 == this.x && entry.y == this.y) {
+					return Move.RIGHT;
+				} else if (entry.x + 1 == this.x && entry.y == this.y) {
+					return Move.LEFT;
+				} else if (entry.x == this.x && entry.y - 1 == this.y) {
+					return Move.DOWN;
+				} else if (entry.x == this.x && entry.y + 1 == this.y) {
+					return Move.UP;
 				}
 			}
 		} else {
@@ -96,7 +109,15 @@ public abstract class McheteCreature extends Creature {
 				neighbour.aStarSearch();
 
 				if (path.size() > pathLengthToBadWolf) {
-					ret = neighbour.howToGetHere;
+					if (neighbour.x - 1 == this.x && neighbour.y == this.y) {
+						return Move.RIGHT;
+					} else if (neighbour.x + 1 == this.x && neighbour.y == this.y) {
+						return Move.LEFT;
+					} else if (neighbour.x == this.x && neighbour.y - 1 == this.y) {
+						return Move.DOWN;
+					} else if (neighbour.x == this.x && neighbour.y + 1 == this.y) {
+						return Move.UP;
+					}
 				}
 			}
 		}
@@ -135,7 +156,7 @@ public abstract class McheteCreature extends Creature {
 		}
 	}
 
-	public boolean isCoordinateValid(int x, int y) {
+	private boolean isCoordinateValid(int x, int y) {
 		boolean ret = false;
 		try {
 			@SuppressWarnings("unused")
@@ -147,7 +168,7 @@ public abstract class McheteCreature extends Creature {
 		return ret;
 	}
 
-	protected void scanMapForItems(char[] objectives) {
+	private void scanMapForItems(char[] objectives) {
 		for (int i = 0; i < this.map.length; i++) {
 			for (int j = 0; j < this.map[0].length; j++) {
 				for (char entry : objectives) {
@@ -155,8 +176,6 @@ public abstract class McheteCreature extends Creature {
 						this.objectives.put(new Square(Type.getType(entry), j, i), 1000);
 					} else if (this.map[i][j].equals(Type.getType('4'))) {
 						badWolf = new Square(Type.getType('4'), j, i);
-					} else if (this.map[i][j].equals(Type.getType('3'))) {
-						greedySheep = new Square(Type.getType('3'), j, i);
 					}
 				}
 			}
@@ -165,31 +184,42 @@ public abstract class McheteCreature extends Creature {
 
 	class Square {
 
-		private Set<Square> closedSet;
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + getOuterType().hashCode();
+			result = prime * result + ((type == null) ? 0 : type.hashCode());
+			result = prime * result + x;
+			result = prime * result + y;
+			return result;
+		}
 
-		private Map<Square, Integer> fScore;
-
-		private Square gotHereFrom;
-
-		private Map<Square, Integer> gScore;
-
-		private Move howToGetHere;
-
-		private Set<Square> openSet;
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			Square other = (Square) obj;
+			if (!getOuterType().equals(other.getOuterType()))
+				return false;
+			if (type != other.type)
+				return false;
+			if (x != other.x)
+				return false;
+			if (y != other.y)
+				return false;
+			return true;
+		}
 
 		private Type type;
 
 		private int x, y;
 
 		protected Square(Type type, int x, int y) {
-			this.type = type;
-			this.x = x;
-			this.y = y;
-		}
-
-		protected Square(Type type, int x, int y, Move howToGetHere, Square gotHereFrom) {
-			this.gotHereFrom = gotHereFrom;
-			this.howToGetHere = howToGetHere;
 			this.type = type;
 			this.x = x;
 			this.y = y;
@@ -202,6 +232,7 @@ public abstract class McheteCreature extends Creature {
 		}
 
 		private void aStarSearch() {
+			cameFrom = new LinkedHashMap<>();
 			closedSet = new HashSet<>();
 			fScore = new LinkedHashMap<>();
 			gScore = new HashMap<>();
@@ -228,7 +259,7 @@ public abstract class McheteCreature extends Creature {
 				}
 
 				if (current != null && current.isGoalReached()) {
-					current.reconstructPath();
+					reconstructPath(current);
 					break;
 				}
 
@@ -245,7 +276,8 @@ public abstract class McheteCreature extends Creature {
 							openSet.add(neighbour);
 						}
 
-						if (gScore.get(neighbour) == null || tentative_gScore < gScore.get(neighbour)) {
+						if (gScore.get(neighbour) == null ? true : tentative_gScore < gScore.get(neighbour)) {
+							cameFrom.put(neighbour, current);
 							gScore.put(neighbour, tentative_gScore);
 							fScore.put(neighbour, gScore.get(neighbour) + getHeuristicCostEstimate(neighbour, goal));
 						}
@@ -259,22 +291,22 @@ public abstract class McheteCreature extends Creature {
 
 			if (isCoordinateValid(x, y - 1)) {
 				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
-						new Square(map[y - 1][x], getXCoordinate(), getYCoordinate() - 1, Move.UP, this));
+						new Square(map[y - 1][x], getXCoordinate(), getYCoordinate() - 1));
 			}
 
 			if (isCoordinateValid(x, y + 1)) {
 				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
-						new Square(map[y + 1][x], getXCoordinate(), getYCoordinate() + 1, Move.DOWN, this));
+						new Square(map[y + 1][x], getXCoordinate(), getYCoordinate() + 1));
 			}
 
 			if (isCoordinateValid(x + 1, y)) {
 				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
-						new Square(map[y][x + 1], getXCoordinate() + 1, getYCoordinate(), Move.RIGHT, this));
+						new Square(map[y][x + 1], getXCoordinate() + 1, getYCoordinate()));
 			}
 
 			if (isCoordinateValid(x - 1, y)) {
 				addNeighbourToListIfAccessible(accessibleNeighbourSquares,
-						new Square(map[y][x - 1], getXCoordinate() - 1, getYCoordinate(), Move.LEFT, this));
+						new Square(map[y][x - 1], getXCoordinate() - 1, getYCoordinate()));
 			}
 
 			return accessibleNeighbourSquares;
@@ -284,8 +316,8 @@ public abstract class McheteCreature extends Creature {
 			return Math.abs(goal.x - start.x) + Math.abs(goal.y - start.y);
 		}
 
-		protected Move getHowToGetHere() {
-			return howToGetHere;
+		private McheteCreature getOuterType() {
+			return McheteCreature.this;
 		}
 
 		protected int getXCoordinate() {
@@ -311,10 +343,20 @@ public abstract class McheteCreature extends Creature {
 			return false;
 		}
 
+		private boolean isNeighbourSquaresSafe() {
+			boolean ret = true;
+			for (Square neighbour : getAccessibleNeighbourSquares()) {
+				if (neighbour.isDeadly()) {
+					ret = false;
+				}
+			}
+			return ret;
+		}
+
 		private boolean isSetContainsSquare(Set<Square> set, Square square) {
 			boolean ret = false;
 			for (Square entry : set) {
-				if (entry.x == square.x && entry.y == square.y) {
+				if (entry.equals(square)) {
 					ret = true;
 				}
 			}
@@ -322,24 +364,27 @@ public abstract class McheteCreature extends Creature {
 		}
 
 		protected boolean isSquareSafe() {
+			boolean ret = false;
 			if (isSquareVisitable() && !isDeadly()) {
-				return true;
+				ret = isNeighbourSquaresSafe();
 			}
-			return false;
+			return ret;
 		}
 
 		private boolean isSquareVisitable() {
+			boolean ret = true;
 			if (type == Type.FENCE) {
-				return false;
+				ret = false;
 			}
-
-			return true;
+			return ret;
 		}
 
-		private void reconstructPath() {
-			path.add(this);
-			if (this.gotHereFrom != null) {
-				this.gotHereFrom.reconstructPath();
+		private void reconstructPath(Square current) {
+			path.add(current);
+			for (Entry<Square, Square> entry : cameFrom.entrySet()) {
+				if (entry.getKey().equals(current)) {
+					reconstructPath(entry.getValue());
+				}
 			}
 		}
 
