@@ -13,3 +13,5 @@ hs_err_pid*
 /bin/
 
 src/kingsheep/team/rmatil/*
+src/kingsheep/team/ckille/*
+src/kingsheep/team/ckille/Wolf.java
